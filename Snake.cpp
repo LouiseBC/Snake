@@ -264,12 +264,11 @@ void Snake::logic() {
         turnOver = true;
     }
     
-    // When snake leaves window loop to opposite side (to do)
-    if (headX < PADDING_SIDES)                      headX = SCREEN_WIDTH + PADDING_SIDES - SPRITE_SIZE;
-    if (headX > (SCREEN_WIDTH + PADDING_SIDES))     headX = PADDING_SIDES;
-    if (headY < PADDING_TOP)                        headY = SCREEN_HEIGHT + PADDING_TOP - SPRITE_SIZE;
-    if (headY > (SCREEN_HEIGHT + PADDING_TOP))      headY = PADDING_TOP;
-    
+    // When snake leaves window loop to opposite side
+    if (headX < PADDING_SIDES)                                  headX = SCREEN_WIDTH + PADDING_SIDES - SPRITE_SIZE;
+    if (headX > (PADDING_SIDES + SCREEN_WIDTH - SPRITE_SIZE) )  headX = PADDING_SIDES;
+    if (headY < PADDING_TOP)                                    headY = SCREEN_HEIGHT + PADDING_TOP - SPRITE_SIZE;
+    if (headY > (PADDING_TOP + SCREEN_HEIGHT - SPRITE_SIZE) )   headY = PADDING_TOP;
 }
 
 bool Snake::itemCollision() {
