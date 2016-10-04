@@ -10,10 +10,17 @@
 //////////////////////
 const int SPRITE_SIZE = 32;
 const int SQUARES = 21;
+const int PADDING_TOP = 32;
+const int PADDING_SIDES = 8;
+
 const int SCREEN_WIDTH = SPRITE_SIZE * SQUARES;
 const int SCREEN_HEIGHT = SPRITE_SIZE * SQUARES;
-const int SCREEN_CENTRE_X = (SCREEN_WIDTH/2)-(SPRITE_SIZE/2);
-const int SCREEN_CENTRE_Y = (SCREEN_HEIGHT/2)-(SPRITE_SIZE/2);
+const int SCREEN_CENTRE_X = PADDING_SIDES + (SCREEN_WIDTH/2)-(SPRITE_SIZE/2);
+const int SCREEN_CENTRE_Y = PADDING_TOP + (SCREEN_HEIGHT/2)-(SPRITE_SIZE/2);
+
+const int WINDOW_WIDTH = SCREEN_WIDTH + 2 * PADDING_SIDES;
+const int WINDOW_HEIGHT = SCREEN_HEIGHT + PADDING_TOP + PADDING_SIDES;
+
 const int FPS = 15;
 const int FRAME_PERIOD = 1000.0f / FPS;
 
@@ -30,7 +37,7 @@ std::uniform_int_distribution<int> posY(0,SQUARES-1);
 //////////////////////
 
 Snake::Snake()
-: headX {SCREEN_CENTRE_X}, headY {SCREEN_CENTRE_Y}, tailN {0}, score {0}, gameOver {false}, pause {false} {
+: headX {SCREEN_CENTRE_X}, headY {SCREEN_CENTRE_Y}, tailN {0}, score {0}, gameOver {false}, turnOver {false}, pause {false} {
     setup();
     loop();
 }
@@ -44,9 +51,10 @@ void Snake::setup() {
     SDL_INIT_AUDIO;
     TTF_Init();
     
-    /*// Splash Screen
-    splashwindow = SDL_CreateWindow("Splash", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 250, SDL_WINDOW_SHOWN);
-    splashsurface = SDL_GetWindowSurface( splashwindow );
+    // Splash Screen
+    /////////////////
+    SDL_Window* splashwindow = SDL_CreateWindow("Splash", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 250, SDL_WINDOW_SHOWN);
+    SDL_Surface* splashsurface = SDL_GetWindowSurface( splashwindow );
     SDL_Surface* splash = IMG_Load("playground/snMEOWake.png");
 
     
@@ -57,10 +65,10 @@ void Snake::setup() {
     SDL_FreeSurface(splash);
     SDL_FreeSurface(splashsurface);
     SDL_DestroyWindow(splashwindow);
-     */
-
-    // Create Window
-    window = SDL_CreateWindow("Catch the kitty", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    
+    // Main Game Window
+    ////////////////////
+    window = SDL_CreateWindow("sn-MEOW-ake", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     if (window == nullptr)
         std::cerr << "Error: Create Window";
     
@@ -68,15 +76,16 @@ void Snake::setup() {
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (renderer == nullptr)
         std::cerr << "Error: Create renderer";
-    SDL_SetRenderDrawColor(renderer, 133, 159, 156, -10);
     
     // Load textures
     texture = IMG_LoadTexture(renderer, "playground/sprites.png");
     if (texture == nullptr)
         std::cerr << "Error: Load texture";
     
-    // Load font
+    // Load scores
     updateScore();
+    getHighScore();
+    updateHighScore();
     
     //Audio
     Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
@@ -84,35 +93,58 @@ void Snake::setup() {
     
     // Set clip for snake
     snakeClips[0].x = 0;
-    snakeClips[0].y = 2*SPRITE_SIZE;
+    snakeClips[0].y = 0;
     snakeClips[0].w = SPRITE_SIZE;
     snakeClips[0].h = SPRITE_SIZE;
     
     // Set clip for item ('fruit')
     snakeClips[1].x = 0;
-    snakeClips[1].y = 2*SPRITE_SIZE;
+    snakeClips[1].y = 4*SPRITE_SIZE;
     snakeClips[1].w = SPRITE_SIZE;
     snakeClips[1].h = SPRITE_SIZE;
     
     // Set random location for item
-    itemX = posX(rng) * SPRITE_SIZE;
-    itemY = posY(rng) * SPRITE_SIZE;
+    itemX = posX(rng) * SPRITE_SIZE + PADDING_SIDES;
+    itemY = posY(rng) * SPRITE_SIZE + PADDING_TOP;
 }
 
 void Snake::draw() {
+    // darkest grey shade, background
+    SDL_SetRenderDrawColor(renderer, 52, 51, 50, 0);
     SDL_RenderClear(renderer);
-    renderTexture(printscore, renderer, 15, 15, nullptr);  // "Score: "
-    renderTexture(texture, renderer, itemX, itemY, &snakeClips[1]); // item
-    renderTexture(texture, renderer, headX, headY, &snakeClips[0]); // snake head
+    
+    // Fill screen rectangle
+    SDL_SetRenderDrawColor(renderer, 172, 119, 120, 22);
+    SDL_Rect screenfill { PADDING_SIDES, PADDING_TOP, SCREEN_WIDTH, SCREEN_HEIGHT };
+    SDL_RenderFillRect(renderer, &screenfill);
+    
+    // Draw game elements
+    //////////////////////
+    renderTexture(printscore, renderer, PADDING_SIDES+3, 10, nullptr);     // Score
+    renderTexture(printhighscore, renderer, SCREEN_WIDTH/2+205, 10, nullptr); // Highscore
+    renderTexture(texture, renderer, itemX, itemY, &snakeClips[1]);        // item
+    renderTexture(texture, renderer, headX, headY, &snakeClips[0]);        // snake head
     
     // snake tail
     if (tailN > 0){
-        for (int i = 0; i < tailN; ++i){
+        for (int i = 0; i < tailN; ++i)
             renderTexture(texture, renderer, tailX[i], tailY[i], &snakeClips[1]);
-        }
      }
     
-    renderTexture(printgameover, renderer, (SCREEN_WIDTH/2)-170, (SCREEN_HEIGHT/2)-55, nullptr); // Game Over
+    // Game Over text rect - Messy. to do.
+    SDL_Rect gameoverRect; //gameover
+    SDL_Rect gameoverRect2; // press space
+    void getRect(const SDL_Texture t);
+    SDL_QueryTexture(printgameover, NULL, NULL, &gameoverRect.w, &gameoverRect.h);
+    SDL_QueryTexture(printreplay, NULL, NULL, &gameoverRect2.w, &gameoverRect2.h);
+    gameoverRect.x = PADDING_SIDES + (SCREEN_WIDTH/2)-(gameoverRect.w/2);
+    gameoverRect.y = PADDING_TOP + (SCREEN_HEIGHT/2)-(gameoverRect.h); // higher than centre - personal preference
+    gameoverRect2.x = (SCREEN_WIDTH/2)-(gameoverRect2.w/2);
+    gameoverRect2.y = gameoverRect.y + gameoverRect.h + gameoverRect2.h;
+    
+    // Game Over text rendering
+    renderTexture(printgameover, renderer, gameoverRect, nullptr); // Game Over
+    renderTexture(printreplay, renderer, gameoverRect2, nullptr); // Space to continue
     
     SDL_RenderPresent(renderer);
 }
@@ -121,7 +153,7 @@ void Snake::loop() {
     
     Uint32 frameStart, frameTime;
     SDL_Event event;
-    while (gameOver != true){
+    while (gameOver == false){
         frameStart = SDL_GetTicks();
         while (SDL_PollEvent(&event)){
             
@@ -130,7 +162,7 @@ void Snake::loop() {
             
             if (event.type == SDL_KEYDOWN){
                 if ((event.key.keysym.sym == SDLK_a ||
-                    event.key.keysym.sym == SDLK_LEFT) && dir != right)
+                     event.key.keysym.sym == SDLK_LEFT) && dir != right)
                     dir = left;
                 if ((event.key.keysym.sym == SDLK_d ||
                      event.key.keysym.sym == SDLK_RIGHT) && dir != left)
@@ -146,7 +178,9 @@ void Snake::loop() {
                     dir = stop;
                 }
                 if (event.key.keysym.sym == SDLK_SPACE){
-                    if (pause == true)
+                    if (turnOver == true)      // Play again when turn is over
+                        reset();
+                    else if (pause == true)
                         pause = false;
                     else if (pause == false)
                         pause = true;
@@ -165,6 +199,8 @@ void Snake::loop() {
     }
     SDL_DestroyTexture(texture);
     SDL_DestroyTexture(printscore);
+    SDL_DestroyTexture(printgameover);
+    SDL_DestroyTexture(printreplay);
     Mix_FreeChunk(meow);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
@@ -177,11 +213,12 @@ void Snake::logic() {
     // 'Pick up' item
     if (itemCollision()){
         score += 10;
+        if (score > highScore) updateHighScore();
         ++tailN;
         Mix_PlayChannel(-1, meow, 0);
         updateScore(); // updates text texture
-        itemX = posX(rng) * SPRITE_SIZE;
-        itemY = posY(rng) * SPRITE_SIZE;
+        itemX = posX(rng) * SPRITE_SIZE + PADDING_SIDES;
+        itemY = posY(rng) * SPRITE_SIZE + PADDING_TOP;
     }
     
     // Snake movement
@@ -220,18 +257,18 @@ void Snake::logic() {
     
     // Tail collision check
     if(tailCollision()) {
-        SDL_RenderClear(renderer);
-        SDL_Color fontcolour = { 49, 54, 53, 1 };
-        printgameover = renderText("GAME OVER..", "playground/GreenFlame.ttf", fontcolour, 60, renderer);
-        //renderTexture(printgameover, renderer, (SCREEN_WIDTH/2)-100, (SCREEN_HEIGHT/2)-30, nullptr);
-        //SDL_RenderPresent(renderer);
+        // Render GAME OVER message
+        SDL_Color fontcolour = { 255, 255, 255, 255 };
+        printgameover = renderText("GAME OVER", "playground/GreenFlame.ttf", fontcolour, 60, renderer);
+        printreplay = renderText("Press spacebar to continue", "playground/GreenFlame.ttf", fontcolour, 13, renderer);
+        turnOver = true;
     }
     
     // When snake leaves window loop to opposite side (to do)
-    if (headX < 0)                headX = SCREEN_WIDTH - SPRITE_SIZE;
-    if (headX > SCREEN_WIDTH)     headX = 0 - SPRITE_SIZE;
-    if (headY < 0)                headY = SCREEN_HEIGHT - SPRITE_SIZE;
-    if (headY > SCREEN_HEIGHT)    headY = 0 - SPRITE_SIZE;
+    if (headX < PADDING_SIDES)                      headX = SCREEN_WIDTH + PADDING_SIDES - SPRITE_SIZE;
+    if (headX > (SCREEN_WIDTH + PADDING_SIDES))     headX = PADDING_SIDES;
+    if (headY < PADDING_TOP)                        headY = SCREEN_HEIGHT + PADDING_TOP - SPRITE_SIZE;
+    if (headY > (SCREEN_HEIGHT + PADDING_TOP))      headY = PADDING_TOP;
     
 }
 
@@ -255,14 +292,55 @@ bool Snake::tailCollision() {
     return false;
 }
 
-void Snake::updateScore() {
-    SDL_Color fontcolour = { 255, 255, 255, 255 };
-    std::string scorestring {"0"};
-    std::string scoremsg {"Score: 0"};
+void Snake::reset() {
+    printgameover = nullptr;
+    printreplay = nullptr;
+    headX = SCREEN_CENTRE_X;
+    headY = SCREEN_CENTRE_Y;
+    itemX = posX(rng) * SPRITE_SIZE + PADDING_SIDES;
+    itemY = posY(rng) * SPRITE_SIZE + PADDING_TOP;
     
-    scorestring = std::to_string(score);
-    scoremsg = "Score: " + scorestring;
-    printscore = renderText(scoremsg, "playground/GreenFlame.ttf", fontcolour, 18, renderer);
+    dir = stop;
+    tailN = 0;
+    score = 0;
+    updateScore();
+}
+
+void Snake::updateScore() {
+    SDL_Color fontcolour = { 240, 228, 228, 4 }; // light red / white
+    
+    std::string scorestring = std::to_string(score);
+    std::string scoremsg = "score: " + scorestring;
+    printscore = renderText(scoremsg, "playground/GreenFlame.ttf", fontcolour, 16, renderer);
+}
+
+void Snake::updateHighScore() {
+    if (score >= highScore) {
+        highScore = score;
+        
+        // Update highscores file
+        SDL_RWops* highscores = SDL_RWFromFile("playground/highscores.txt", "w");
+        if (highscores == NULL)
+            printf( "Warning: Unable to open file! SDL Error: %s\n", SDL_GetError() );
+        SDL_RWwrite(highscores, &highScore, sizeof(int), 1);
+        SDL_RWclose(highscores);
+    }
+    
+    // Render new score
+    SDL_Color fontcolour = { 240, 228, 228, 4 }; // light red / white
+    
+    std::string scorestring = std::to_string(highScore);
+    std::string scoremsg = "highscore: " + scorestring;
+    printhighscore = renderText(scoremsg, "playground/GreenFlame.ttf", fontcolour, 16, renderer);
+}
+
+void Snake::getHighScore() {
+    SDL_RWops* highscores = SDL_RWFromFile("playground/highscores.txt", "r");
+    if (highscores == NULL){
+        std::cerr << "Error: Could not open highscores.txt or file does not exist" << std::endl;
+        highScore = score;
+    }
+    else SDL_RWread(highscores, &highScore, sizeof(int), 1);
 }
 
 // Render texture with existing destination rect
