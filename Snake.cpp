@@ -55,7 +55,7 @@ void Snake::setup() {
     /////////////////
     SDL_Window* splashwindow = SDL_CreateWindow("Splash", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 250, SDL_WINDOW_SHOWN);
     SDL_Surface* splashsurface = SDL_GetWindowSurface( splashwindow );
-    SDL_Surface* splash = IMG_Load("playground/snMEOWake.png");
+    SDL_Surface* splash = IMG_Load("snMEOWake.png");
 
     
     SDL_BlitSurface( splash, NULL, splashsurface, NULL );
@@ -78,7 +78,7 @@ void Snake::setup() {
         std::cerr << "Error: Create renderer";
     
     // Load textures
-    texture = IMG_LoadTexture(renderer, "playground/sprites.png");
+    texture = IMG_LoadTexture(renderer, "sprites.png");
     if (texture == nullptr)
         std::cerr << "Error: Load texture";
     
@@ -89,7 +89,7 @@ void Snake::setup() {
     
     //Audio
     Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
-    meow = Mix_LoadWAV("playground/cat_meow_x.wav");
+    meow = Mix_LoadWAV("cat_meow_x.wav");
     
     // Set clip for snake
     snakeClips[0].x = 0;
@@ -259,8 +259,8 @@ void Snake::logic() {
     if(tailCollision()) {
         // Render GAME OVER message
         SDL_Color fontcolour = { 255, 255, 255, 255 };
-        printgameover = renderText("GAME OVER", "playground/GreenFlame.ttf", fontcolour, 60, renderer);
-        printreplay = renderText("Press spacebar to continue", "playground/GreenFlame.ttf", fontcolour, 13, renderer);
+        printgameover = renderText("GAME OVER", "GreenFlame.ttf", fontcolour, 60, renderer);
+        printreplay = renderText("Press spacebar to continue", "GreenFlame.ttf", fontcolour, 13, renderer);
         turnOver = true;
     }
     
@@ -310,7 +310,7 @@ void Snake::updateScore() {
     
     std::string scorestring = std::to_string(score);
     std::string scoremsg = "score: " + scorestring;
-    printscore = renderText(scoremsg, "playground/GreenFlame.ttf", fontcolour, 16, renderer);
+    printscore = renderText(scoremsg, "GreenFlame.ttf", fontcolour, 16, renderer);
 }
 
 void Snake::updateHighScore() {
@@ -318,7 +318,7 @@ void Snake::updateHighScore() {
         highScore = score;
         
         // Update highscores file
-        SDL_RWops* highscores = SDL_RWFromFile("playground/highscores.txt", "w");
+        SDL_RWops* highscores = SDL_RWFromFile("highscores.txt", "w");
         if (highscores == NULL)
             printf( "Warning: Unable to open file! SDL Error: %s\n", SDL_GetError() );
         SDL_RWwrite(highscores, &highScore, sizeof(int), 1);
@@ -330,7 +330,7 @@ void Snake::updateHighScore() {
     
     std::string scorestring = std::to_string(highScore);
     std::string scoremsg = "highscore: " + scorestring;
-    printhighscore = renderText(scoremsg, "playground/GreenFlame.ttf", fontcolour, 16, renderer);
+    printhighscore = renderText(scoremsg, "GreenFlame.ttf", fontcolour, 16, renderer);
 }
 
 void Snake::getHighScore() {
