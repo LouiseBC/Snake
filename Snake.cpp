@@ -6,7 +6,7 @@
 #include <random>
 #include "Snake.h"
 
-// Naughty globals
+// Globals
 //////////////////////
 const int SPRITE_SIZE = 32;
 const int SQUARES = 21;
